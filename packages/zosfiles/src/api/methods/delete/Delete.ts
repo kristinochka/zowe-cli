@@ -9,7 +9,7 @@
 *
 */
 
-import { AbstractSession, ImperativeError, ImperativeExpect, Logger } from "@zowe/imperative";
+import { AbstractSession, Headers, ImperativeExpect, Logger } from "@zowe/imperative";
 
 import { posix } from "path";
 
@@ -22,6 +22,7 @@ import { Invoke } from "../invoke";
 import { IDeleteDatasetOptions } from "./doc/IDeleteDatasetOptions";
 import { IDeleteVsamOptions } from "./doc/IDeleteVsamOptions";
 import { IDeleteVsamResponse } from "./doc/IDeleteVsamResponse";
+import { IHeaderContent } from "../../../../../rest/src/doc/IHeaderContent";
 
 /**
  * This class holds helper functions that are used to delete files through the
@@ -151,6 +152,41 @@ export class Delete {
             } else {
                 await ZosmfRestClient.deleteExpectString(session, endpoint);
             }
+            return {
+                success: true,
+                commandResponse: ZosFilesMessages.ussFileDeletedSuccessfully.message
+            };
+        } catch (error) {
+            Logger.getAppLogger().error(error);
+            throw error;
+        }
+    }
+
+    public static async ussFile3(session: AbstractSession, fileName: string, newName: string): Promise<IZosFilesResponse> {
+        // required
+        ImperativeExpect.toNotBeNullOrUndefined(fileName, ZosFilesMessages.missingUSSFileName.message);
+        ImperativeExpect.toNotBeEqual(fileName, "", ZosFilesMessages.missingUSSFileName.message);
+
+        const unixPath = posix.join(ZosFilesConstants.RESOURCE, ZosFilesConstants.RES_USS_FILES);
+
+        // Format the new endpoint to send the request to
+        const encodedNewName = encodeURIComponent(newName);
+        const newEndpoint = posix.join(unixPath, encodedNewName);
+        Logger.getAppLogger().debug(`Endpoint: ${newEndpoint}`);
+
+        // Format the old endpoint
+        const encodedOldName = encodeURIComponent(fileName);
+        const oldEndpoint = posix.join(unixPath, encodedOldName);
+        Logger.getAppLogger().debug(`Endpoint: ${oldEndpoint}`);
+
+        try {
+            // await ZosmfRestClient.putExpectString(session, endpoint, [], { request: "move", from: oldEndpoint });
+            const payload = { request: "move", from: oldEndpoint } as any;
+            const reqHeaders: IHeaderContent[] = [Headers.APPLICATION_JSON, { [Headers.CONTENT_LENGTH] : JSON.stringify(payload).length.toString() }];
+            // const stringPayload = JSON.stringify(payload);
+            // await ZosmfRestClient.putExpectJSON(session, newEndpoint, reqHeaders, payload);
+            // await ZosmfRestClient.putExpectString(session, newEndpoint, reqHeaders, payload);
+            await ZosmfRestClient.putExpectBuffer(session, newEndpoint, reqHeaders, payload);
             return {
                 success: true,
                 commandResponse: ZosFilesMessages.ussFileDeletedSuccessfully.message
