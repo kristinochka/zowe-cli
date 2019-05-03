@@ -89,6 +89,31 @@ describe("USS utiliites", () => {
                 expectedPayload);
         }
     });
+
+    describe("renameUSSFile", () => {
+        it("should fail if new file path is not passed in", async () => {
+            try {
+                await Utilities.renameUSSFile(dummySession, "/u/zowe/test", undefined);
+            } catch (err) {
+                error = err;
+            }
+
+            expect(error).toBeDefined();
+            expect(error.message).toContain(ZosFilesMessages.missingUSSFileName.message);
+        });
+        it("should execute if all parameters are provided", async () => {
+            let renameResponse;
+            response.success = true;
+            spyOn(Utilities, "putUSSPayload").and.returnValue(response);
+            try {
+                renameResponse = await Utilities.renameUSSFile(dummySession, "/u/zowe/test", "/u/zowe/test1");
+            } catch (err) {
+                error = err;
+            }
+            expect(error).not.toBeDefined();
+            expect(renameResponse).toBeTruthy();
+        });
+    });
 });
 interface IChtagArgs {
     type: Tag;
