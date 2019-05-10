@@ -89,6 +89,61 @@ describe("USS utiliites", () => {
                 expectedPayload);
         }
     });
+
+    describe("putUSSPayload", () => {
+        const zosmfExpectSecondSpy = jest.spyOn(ZosmfRestClient, "putExpectBuffer");
+        const payload = {request: "move", action: "/u/zowe/test"};
+        const content = new Buffer(JSON.stringify({}));
+
+        beforeEach(() => {
+            zosmfExpectSecondSpy.mockClear();
+            zosmfExpectSecondSpy.mockImplementation(() => content);
+        });
+
+        it("should throw an error if the uss file name is null", async () => {
+            let myResponse;
+            let caughtError;
+
+            try {
+                myResponse = await Utilities.putUSSPayload(dummySession, null, payload);
+            } catch (e) {
+                caughtError = e;
+            }
+
+            expect(myResponse).toBeUndefined();
+            expect(caughtError).toBeDefined();
+            expect(caughtError.message).toContain(ZosFilesMessages.missingUSSFileName.message);
+        });
+    });
+
+    describe("renameUSSFile", () => {
+        it("should fail if new file path is not passed in", async () => {
+            try {
+                await Utilities.renameUSSFile(dummySession, "/u/zowe/test", undefined);
+            } catch (err) {
+                error = err;
+            }
+
+            expect(error).toBeDefined();
+            expect(error.message).toContain(ZosFilesMessages.missingUSSFileName.message);
+        });
+        it("should execute if all parameters are provided", async () => {
+            let renameResponse;
+            jest.spyOn(ZosmfRestClient, "putExpectBuffer").mockReturnValue({});
+            const zosmfExpectSecondSpy = jest.spyOn(Utilities, "putUSSPayload");
+            const oldPath = "/u/zowe/test";
+            const newPath= "/u/zowe/test1";
+            try {
+                renameResponse = await Utilities.renameUSSFile(dummySession, oldPath, newPath);
+            } catch (err) {
+                error = err;
+            }
+            expect(error).not.toBeDefined();
+            expect(renameResponse).toBeTruthy();
+            const payload = { request: "move", from: oldPath };
+            expect(zosmfExpectSecondSpy).toHaveBeenLastCalledWith(dummySession, newPath, payload);
+        });
+    });
 });
 interface IChtagArgs {
     type: Tag;
